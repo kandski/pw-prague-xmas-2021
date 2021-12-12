@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import timedelta
+from json import JSONDecodeError
 from typing import Any
 
 from redis import Redis
@@ -18,6 +19,10 @@ def journey_to_dict(journey: Journey) -> dict:
         "destination": journey.destination,
         "departure": journey.departure.isoformat(),
         "arrival": journey.arrival.isoformat(),
+        "type": journey.type,
+        "free_seats": journey.free_seats,
+        "carrier": journey.carrier,
+        "fare": journey.fare
     }
 
 
@@ -26,7 +31,11 @@ def serialize_journeys(journeys: list[Journey]) -> str:
 
 
 def deserialize_journeys(journeys: str) -> list[Journey]:
-    return [Journey.from_dict(journey) for journey in json.loads(journeys)]
+    try:
+        return [Journey.from_dict(journey) for journey in json.loads(journeys)]
+    except JSONDecodeError:
+        log.debug("journeys failed to deserialize")
+        return []
 
 
 def scraper_result_to_journey(scraper_dict: dict[str, Any]) -> Journey:
@@ -35,6 +44,10 @@ def scraper_result_to_journey(scraper_dict: dict[str, Any]) -> Journey:
         arrival=scraper_dict["arrival_datetime"],
         origin=scraper_dict["source"],
         destination=scraper_dict["destination"],
+        type=scraper_dict['type'],
+        free_seats=scraper_dict['free_seats'],
+        carrier=scraper_dict['carrier'],
+        fare=scraper_dict['fare']
     )
 
 
@@ -79,4 +92,7 @@ def search_journeys_with_cache(redis: Redis, search_input: SearchInput) -> list[
 def scrape(search_input: SearchInput) -> list[Journey]:
     redis = Redis(host="redis.pythonweekend.skypicker.com", port=6379, db=0, decode_responses=True)
     journeys = search_journeys_with_cache(redis, search_input)
-    return journeys
+    if journeys:
+        return journeys
+    else:
+        return search_journeys(search_input)

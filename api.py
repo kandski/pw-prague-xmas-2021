@@ -3,6 +3,7 @@ from datetime import datetime
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.custom_logger import setup_logger
 from src.models.journey import SearchInput, Journey
@@ -10,6 +11,19 @@ from src.scrapers.cached_scraper import scrape
 
 app = FastAPI()
 
+origins = [
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "http://192.168.51.38:3000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 log = logging.getLogger()
 setup_logger(log)
 
